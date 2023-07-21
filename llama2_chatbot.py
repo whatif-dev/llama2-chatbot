@@ -12,6 +12,7 @@ Status: Development
 Python version: 3.9.15
 a16z-infra
 """
+
 #External libraries:
 import streamlit as st
 import replicate
@@ -95,24 +96,20 @@ st.session_state['top_p'] = st.sidebar.slider('Top P:', min_value=0.01, max_valu
 st.session_state['max_seq_len'] = st.sidebar.slider('Max Sequence Length:', min_value=64, max_value=4096, value=2048, step=8)
 
 NEW_P = st.sidebar.text_area('Prompt before the chat starts. Edit here if desired:', PRE_PROMPT, height=60)
-if NEW_P != PRE_PROMPT and NEW_P != "" and NEW_P != None:
+if NEW_P not in [PRE_PROMPT, "", None]:
     st.session_state['pre_prompt'] = NEW_P + "\n\n"
 else:
     st.session_state['pre_prompt'] = PRE_PROMPT
 
 
-# Add the "Clear Chat History" button to the sidebar
-clear_chat_history_button = st.sidebar.button("Clear Chat History")
-
-# Check if the button is clicked
-if clear_chat_history_button:
+if clear_chat_history_button := st.sidebar.button("Clear Chat History"):
     # Reset the chat history stored in the session state
     st.session_state['chat_dialogue'] = []
-    
-    
+
+
 # add links to relevant resources for users to select
-text1 = 'Chatbot Demo Code' 
-text2 = 'Model on Replicate' 
+text1 = 'Chatbot Demo Code'
+text2 = 'Model on Replicate'
 text3 = 'LLaMa2 Cog Template'
 
 logo1_link = "https://github.com/a16z-infra/llama2-chatbot"
@@ -161,21 +158,32 @@ if prompt := st.chat_input("Type your question here to talk to LLaMA2"):
     # Display user message in chat message container
     with st.chat_message("user"):
         st.markdown(prompt)
-    
+
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
         string_dialogue = st.session_state['pre_prompt']
         for dict_message in st.session_state.chat_dialogue:
             if dict_message["role"] == "user":
-                string_dialogue = string_dialogue + "User: " + dict_message["content"] + "\n\n"
+                string_dialogue = f"{string_dialogue}User: " + dict_message["content"] + "\n\n"
             else:
-                string_dialogue = string_dialogue + "Assistant: " + dict_message["content"] + "\n\n"
+                string_dialogue = (
+                    f"{string_dialogue}Assistant: "
+                    + dict_message["content"]
+                    + "\n\n"
+                )
         print (string_dialogue)
-        output = debounce_replicate_run(st.session_state['llm'], string_dialogue + "Assistant: ",  st.session_state['max_seq_len'], st.session_state['temperature'], st.session_state['top_p'], REPLICATE_API_TOKEN)
+        output = debounce_replicate_run(
+            st.session_state['llm'],
+            f"{string_dialogue}Assistant: ",
+            st.session_state['max_seq_len'],
+            st.session_state['temperature'],
+            st.session_state['top_p'],
+            REPLICATE_API_TOKEN,
+        )
         for item in output:
             full_response += item
-            message_placeholder.markdown(full_response + "▌")
+            message_placeholder.markdown(f"{full_response}▌")
         message_placeholder.markdown(full_response)
     # Add assistant response to chat history
     st.session_state.chat_dialogue.append({"role": "assistant", "content": full_response})
